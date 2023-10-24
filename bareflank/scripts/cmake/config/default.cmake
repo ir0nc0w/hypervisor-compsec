@@ -749,7 +749,7 @@ set(CXXOPTS_URL "https://github.com/jarro2783/cxxopts/archive/v2.1.1.zip"
     "cxxopts URL"
 )
 
-set(CXXOPTS_URL_MD5 "474adf4a53d41549a84bacbe496c035a"
+set(CXXOPTS_URL_MD5 "e5449864bc655b1684c596ced0b1691f"
     CACHE INTERNAL FORCE
     "cxxopts URL MD5 hash"
 )
