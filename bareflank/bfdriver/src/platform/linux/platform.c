@@ -35,6 +35,8 @@
 #include <linux/cpumask.h>
 #include <linux/sched.h>
 #include <linux/kallsyms.h>
+#include <linux/version.h>
+#include <linux/kernel.h>
 
 #if defined(BF_AARCH64)
 #   include <asm/io.h>
@@ -43,9 +45,44 @@
 typedef long (*set_affinity_fn)(pid_t, const struct cpumask *);
 set_affinity_fn set_cpu_affinity = nullptr;
 
+typedef void* (*__vmalloc_node_range_fn)(unsigned long size, unsigned long align,
+                        unsigned long start, unsigned long end, gfp_t gfp_mask,
+                        pgprot_t prot, unsigned long vm_flags, int node,
+                        const void *caller);
+__vmalloc_node_range_fn __vmalloc_node_range_ptr = nullptr;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+
+#include <asm/io.h>
+#include <linux/kprobes.h>
+
+#define KPROBE_KALLSYMS_LOOKUP 1
+typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
+kallsyms_lookup_name_t kallsyms_lookup_name_func;
+#define kallsyms_lookup_name kallsyms_lookup_name_func
+
+static struct kprobe kp = {
+    .symbol_name = "kallsyms_lookup_name"
+};
+#endif
+
 int64_t
 platform_init(void)
 {
+
+#if KPROBE_KALLSYMS_LOOKUP
+    register_kprobe(&kp);
+    kallsyms_lookup_name = (kallsyms_lookup_name_t)kp.addr;
+    unregister_kprobe(&kp);
+
+    if (!unlikely(kallsyms_lookup_name)) {
+        BFALERT("Could not retrieve kallsyms_lookup_name address\n");
+        return -1;
+    }
+
+    printk(KERN_INFO "cwmyung:bfdriver -- %s found kallsyms_lookup_name\n", __func__);
+#endif
+
     set_cpu_affinity = (set_affinity_fn)kallsyms_lookup_name("sched_setaffinity");
     if (set_cpu_affinity == nullptr) {
         BFALERT("Failed to locate sched_setaffinity\n");
@@ -74,6 +111,23 @@ platform_alloc_rw(uint64_t len)
     return addr;
 }
 
+void*
+vmalloc_nx_disable(uint64_t size)
+{
+    __vmalloc_node_range_ptr = (__vmalloc_node_range_fn)
+                        kallsyms_lookup_name("__vmalloc_node_range");
+
+    if (__vmalloc_node_range_ptr == nullptr) {
+        printk(KERN_INFO "cwmyung: (ERROR) couldn't find __vmalloc_node_range\n");
+        return NULL;
+    }
+
+    return __vmalloc_node_range_ptr(size, 1, VMALLOC_START, VMALLOC_END,
+                                GFP_KERNEL, PAGE_KERNEL_EXEC,
+                                0, NUMA_NO_NODE,
+                                __builtin_return_address(0));
+}
+
 void *
 platform_alloc_rwe(uint64_t len)
 {
@@ -84,7 +138,8 @@ platform_alloc_rwe(uint64_t len)
         return addr;
     }
 
-    addr = __vmalloc(len, GFP_KERNEL, PAGE_KERNEL_EXEC);
+    addr = vmalloc_nx_disable(len);
+    printk(KERN_INFO "cwmyung: bfdriver -- Allocating %lld bytes for executable pages\n", len);
 
     if (addr == nullptr) {
         BFALERT("platform_alloc_rwe: failed to vmalloc rwe mem: %lld\n", len);
