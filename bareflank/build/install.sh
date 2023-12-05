@@ -5,5 +5,6 @@
 ./uninstall.sh || true
 
 cmake ..
+patch -p1 < string.patch
 
 make -j`nproc`

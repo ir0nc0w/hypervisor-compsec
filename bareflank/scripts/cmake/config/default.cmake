@@ -422,7 +422,11 @@ add_config(
 # Config
 # ------------------------------------------------------------------------------
 
-set(CMAKE_BUILD_TYPE "Release"
+# set(CMAKE_BUILD_TYPE "Release"
+#     CACHE INTERNAL
+#     "Defines the build type"
+# )
+set(CMAKE_BUILD_TYPE "Debug"
     CACHE INTERNAL
     "Defines the build type"
 )
