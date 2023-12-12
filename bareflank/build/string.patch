@@ -1,0 +1,11 @@
+--- a/cache/libcxx/src/string.cpp	2023-12-05 11:54:22.195655710 +0000
++++ b/cache/libcxx/src/string.cpp	2023-12-05 11:54:41.779299455 +0000
+@@ -14,6 +14,8 @@
+ #include "limits"
+ #include "stdexcept"
+ #include <stdio.h>
++#include <stdlib.h>
++#include <wchar.h>
+ 
+ _LIBCPP_BEGIN_NAMESPACE_STD
+ 
