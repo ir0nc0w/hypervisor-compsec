@@ -19,6 +19,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+set(CMAKE_BUILD_TYPE "Debug"
+    CACHE INTERNAL
+    "Defines the build type"
+)
+
 if(ENABLE_BUILD_VMM)
     add_subproject(hook vmm
         DEPENDS bfvmm
